@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alarma ESP32</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f0f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Alarma">
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -41,7 +49,6 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 16px;
-      position: relative;
       transition: border-color 0.4s ease, box-shadow 0.4s ease;
     }
 
@@ -49,18 +56,14 @@
       border-color: #ff4455;
       box-shadow: 0 0 30px rgba(255, 68, 85, 0.2);
     }
-
     .status-ring.desarmado {
       border-color: #44cc88;
       box-shadow: 0 0 30px rgba(68, 204, 136, 0.2);
     }
-
     .status-ring.conectando {
       border-color: #5588ff;
-      box-shadow: 0 0 30px rgba(85, 136, 255, 0.2);
       animation: pulsar 1.2s ease-in-out infinite;
     }
-
     .status-ring.alerta {
       border-color: #ff4455;
       animation: alerta 0.5s ease-in-out infinite;
@@ -68,12 +71,11 @@
 
     @keyframes pulsar {
       0%, 100% { box-shadow: 0 0 20px rgba(85, 136, 255, 0.2); }
-      50% { box-shadow: 0 0 40px rgba(85, 136, 255, 0.5); }
+      50%       { box-shadow: 0 0 40px rgba(85, 136, 255, 0.5); }
     }
-
     @keyframes alerta {
       0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 85, 0.2); }
-      50% { box-shadow: 0 0 60px rgba(255, 68, 85, 0.8); }
+      50%       { box-shadow: 0 0 60px rgba(255, 68, 85, 0.8); }
     }
 
     .status-icon { font-size: 36px; }
@@ -85,7 +87,6 @@
       color: #5a5a7a;
       text-align: center;
     }
-
     .status-text span {
       display: block;
       font-size: 14px;
@@ -94,12 +95,11 @@
       margin-top: 4px;
       transition: color 0.4s ease;
     }
-
-    .status-text span.armado    { color: #ff4455; }
-    .status-text span.desarmado { color: #44cc88; }
-    .status-text span.desconectado { color: #5a5a7a; }
-    .status-text span.conectando   { color: #5588ff; }
-    .status-text span.alerta       { color: #ff4455; }
+    .status-text span.armado      { color: #ff4455; }
+    .status-text span.desarmado   { color: #44cc88; }
+    .status-text span.desconectado{ color: #5a5a7a; }
+    .status-text span.conectando  { color: #5588ff; }
+    .status-text span.alerta      { color: #ff4455; }
 
     .card {
       background: #16161f;
@@ -126,82 +126,60 @@
       cursor: pointer;
       transition: all 0.2s ease;
     }
-
-    .btn:active { transform: scale(0.97); }
+    .btn:active   { transform: scale(0.97); }
     .btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
 
-    .btn-conectar {
-      background: #1e1e2e;
-      color: #5588ff;
-      border: 1px solid #5588ff44;
-    }
-    .btn-conectar:hover:not(:disabled) {
-      background: #5588ff15;
-      border-color: #5588ff;
-    }
-    .btn-conectar.conectado {
-      color: #44cc88;
-      border-color: #44cc8844;
-    }
-    .btn-conectar.conectado:hover:not(:disabled) {
-      background: #44cc8815;
-      border-color: #44cc88;
-    }
+    .btn-conectar { background: #1e1e2e; color: #5588ff; border: 1px solid #5588ff44; }
+    .btn-conectar:hover:not(:disabled) { background: #5588ff15; border-color: #5588ff; }
+    .btn-conectar.conectado { color: #44cc88; border-color: #44cc8844; }
+    .btn-conectar.conectado:hover:not(:disabled) { background: #44cc8815; border-color: #44cc88; }
 
     .btn-toggle {
-      background: #ff445518;
-      color: #ff4455;
-      border: 1px solid #ff445544;
-      padding: 20px;
-      font-size: 13px;
+      background: #ff445518; color: #ff4455;
+      border: 1px solid #ff445544; padding: 20px; font-size: 13px;
     }
-    .btn-toggle:hover:not(:disabled) {
-      background: #ff445530;
-      border-color: #ff4455;
-    }
-    .btn-toggle.desarmado-estado {
-      background: #44cc8818;
-      color: #44cc88;
-      border-color: #44cc8844;
-    }
-    .btn-toggle.desarmado-estado:hover:not(:disabled) {
-      background: #44cc8830;
-      border-color: #44cc88;
-    }
+    .btn-toggle:hover:not(:disabled) { background: #ff445530; border-color: #ff4455; }
+    .btn-toggle.desarmado-estado { background: #44cc8818; color: #44cc88; border-color: #44cc8844; }
+    .btn-toggle.desarmado-estado:hover:not(:disabled) { background: #44cc8830; border-color: #44cc88; }
 
-    .btn-notif {
-      background: #1e1e2e;
-      color: #ffaa44;
-      border: 1px solid #ffaa4444;
-      font-size: 11px;
-      padding: 12px;
-    }
-    .btn-notif:hover:not(:disabled) {
-      background: #ffaa4415;
-      border-color: #ffaa44;
-    }
-    .btn-notif.activo {
-      color: #44cc88;
-      border-color: #44cc8844;
-    }
+    .btn-notif { background: #1e1e2e; color: #ffaa44; border: 1px solid #ffaa4444; font-size: 11px; padding: 12px; }
+    .btn-notif:hover:not(:disabled) { background: #ffaa4415; border-color: #ffaa44; }
+    .btn-notif.activo { color: #44cc88; border-color: #44cc8844; }
+
+    .divider { height: 1px; background: #1e1e2e; }
 
     .log {
       font-size: 10px;
-      color: #3a3a5a;
       letter-spacing: 0.05em;
       line-height: 1.8;
       min-height: 48px;
       border-top: 1px solid #1e1e2e;
       padding-top: 16px;
     }
+    .log p          { color: #5a5a8a; }
+    .log p.ok       { color: #44cc88; }
+    .log p.err      { color: #ff4455; }
+    .log p.info     { color: #5588ff; }
+    .log p.warn     { color: #ffaa44; }
 
-    .log p { color: #5a5a8a; }
-    .log p.ok  { color: #44cc88; }
-    .log p.err { color: #ff4455; }
-    .log p.info { color: #5588ff; }
-    .log p.warn { color: #ffaa44; }
-
-    .divider { height: 1px; background: #1e1e2e; }
+    #installBanner {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e1e2e;
+      border: 1px solid #5588ff44;
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 11px;
+      color: #5588ff;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+    }
+    #installBanner:hover { background: #5588ff15; }
   </style>
 </head>
 <body>
@@ -237,29 +215,64 @@
     </div>
   </div>
 
+  <!-- Banner de instalación PWA -->
+  <div id="installBanner" onclick="instalarPWA()">
+    ⬇ Instalar app en pantalla de inicio
+  </div>
+
   <script>
     // ─── Configuración ────────────────────────────────────────────────
-    const DEVICE_NAME      = 'Alarma-ESP32';
-    const SERVICE_UUID     = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+    const DEVICE_NAME       = 'Alarma-ESP32';
+    const SERVICE_UUID      = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
     const CHAR_CONTROL_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
     const CHAR_NOTIFY_UUID  = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
-    const PIN              = '1234';
+    const PIN               = '1234';
 
     // ─── Estado ───────────────────────────────────────────────────────
-    let device = null;
+    let device      = null;
     let charControl = null;
-    let charNotify = null;
-    let armado = true;
+    let charNotify  = null;
+    let armado      = true;
     let notifActivas = false;
+    let deferredPrompt = null;
 
     // ─── DOM ──────────────────────────────────────────────────────────
-    const ring        = document.getElementById('ring');
-    const icono       = document.getElementById('icono');
-    const estadoTexto = document.getElementById('estadoTexto');
-    const btnConectar = document.getElementById('btnConectar');
-    const btnToggle   = document.getElementById('btnToggle');
-    const btnNotif    = document.getElementById('btnNotif');
-    const logEl       = document.getElementById('log');
+    const ring          = document.getElementById('ring');
+    const icono         = document.getElementById('icono');
+    const estadoTexto   = document.getElementById('estadoTexto');
+    const btnConectar   = document.getElementById('btnConectar');
+    const btnToggle     = document.getElementById('btnToggle');
+    const btnNotif      = document.getElementById('btnNotif');
+    const logEl         = document.getElementById('log');
+    const installBanner = document.getElementById('installBanner');
+
+    // ─── Service Worker ───────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('[PWA] Service Worker registrado.'))
+        .catch(err => console.error('[PWA] Error SW:', err));
+    }
+
+    // ─── Capturar evento de instalación PWA ──────────────────────────
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBanner.style.display = 'block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBanner.style.display = 'none';
+      deferredPrompt = null;
+      log('¡App instalada en pantalla de inicio!', 'ok');
+    });
+
+    async function instalarPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') installBanner.style.display = 'none';
+      deferredPrompt = null;
+    }
 
     // ─── Log ──────────────────────────────────────────────────────────
     function log(msg, tipo = '') {
@@ -287,12 +300,15 @@
       }
     }
 
-    function enviarNotif(titulo, cuerpo, icono = '🔒') {
+    function enviarNotif(titulo, cuerpo) {
       if (!notifActivas || Notification.permission !== 'granted') return;
-      new Notification(titulo, {
-        body: cuerpo,
-        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">' + icono + '</text></svg>'
-      });
+      if (navigator.serviceWorker.controller) {
+        // Vía Service Worker → funciona en segundo plano en Android
+        navigator.serviceWorker.controller.postMessage({ titulo, cuerpo });
+      } else {
+        // Fallback directo (solo funciona con la app en primer plano)
+        new Notification(titulo, { body: cuerpo });
+      }
     }
 
     // ─── UI ───────────────────────────────────────────────────────────
@@ -331,36 +347,31 @@
       }
     }
 
-    // ─── Manejar mensajes BLE entrantes del ESP32 ─────────────────────
+    // ─── Mensajes BLE entrantes del ESP32 ────────────────────────────
     function manejarNotificacionBLE(event) {
-      const decoder = new TextDecoder();
-      const msg = decoder.decode(event.target.value);
-      console.log('[BLE Notify]', msg);
+      const msg = new TextDecoder().decode(event.target.value);
 
       if (msg.startsWith('ESTADO:')) {
-        const nuevoEstado = msg.replace('ESTADO:', '');
-        armado = nuevoEstado === 'ARMADO';
+        armado = msg.replace('ESTADO:', '') === 'ARMADO';
         actualizarUI();
         if (armado) {
-          log('Sistema armado por comando externo.', 'warn');
-          enviarNotif('🔴 Alarma Armada', 'El sistema fue armado remotamente.');
+          log('Sistema armado.', 'warn');
+          enviarNotif('🔴 Alarma Armada', 'El sistema fue armado.');
         } else {
-          log('Sistema desarmado por comando externo.', 'ok');
-          enviarNotif('🟢 Alarma Desarmada', 'El sistema fue desarmado remotamente.');
+          log('Sistema desarmado.', 'ok');
+          enviarNotif('🟢 Alarma Desarmada', 'El sistema fue desarmado.');
         }
       }
-
       else if (msg === 'ALERTA:PUERTA_ABIERTA') {
         ring.className = 'status-ring alerta';
         icono.textContent = '🚨';
         estadoTexto.className = 'alerta';
         estadoTexto.textContent = '¡PUERTA ABIERTA!';
-        log('¡ALERTA! Puerta abierta detectada.', 'err');
-        enviarNotif('🚨 ¡ALERTA!', 'La puerta fue abierta con el sistema armado.', '🚨');
+        log('¡ALERTA! Puerta abierta.', 'err');
+        enviarNotif('🚨 ¡ALERTA!', 'La puerta fue abierta con la alarma activa.');
       }
-
       else if (msg === 'ALERTA:PUERTA_CERRADA') {
-        actualizarUI(); // vuelve al estado normal
+        actualizarUI();
         log('Puerta cerrada.', 'ok');
         enviarNotif('✅ Puerta cerrada', 'La puerta volvió a cerrarse.');
       }
@@ -393,7 +404,7 @@
         device.addEventListener('gattserverdisconnected', () => {
           log('Conexión perdida.', 'err');
           charControl = null;
-          charNotify = null;
+          charNotify  = null;
           actualizarUI();
         });
 
@@ -401,11 +412,9 @@
         const server  = await device.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
 
-        // Característica de control (enviar PIN)
         charControl = await service.getCharacteristic(CHAR_CONTROL_UUID);
+        charNotify  = await service.getCharacteristic(CHAR_NOTIFY_UUID);
 
-        // Característica de notificaciones (recibir alertas del ESP32)
-        charNotify = await service.getCharacteristic(CHAR_NOTIFY_UUID);
         await charNotify.startNotifications();
         charNotify.addEventListener('characteristicvaluechanged', manejarNotificacionBLE);
 
@@ -422,22 +431,16 @@
 
     // ─── Toggle ───────────────────────────────────────────────────────
     async function toggle() {
-      if (!charControl) {
-        log('No hay conexión activa.', 'err');
-        return;
-      }
-
+      if (!charControl) { log('Sin conexión.', 'err'); return; }
       try {
-        const encoder = new TextEncoder();
-        await charControl.writeValue(encoder.encode(PIN));
-        // La UI se actualiza cuando el ESP32 manda la notificación BLE de vuelta
+        await charControl.writeValue(new TextEncoder().encode(PIN));
         log('Comando enviado, esperando confirmación...', 'info');
       } catch (err) {
-        log('Error al enviar: ' + err.message, 'err');
+        log('Error: ' + err.message, 'err');
       }
     }
 
-    // Verificar si ya hay permiso de notificaciones al cargar
+    // ─── Al cargar ────────────────────────────────────────────────────
     window.addEventListener('load', () => {
       if (Notification.permission === 'granted') {
         notifActivas = true;
