@@ -461,24 +461,33 @@
 
         // Intentar autenticar automáticamente con token guardado
         const tokenGuardado = localStorage.getItem('alarma_token');
-                if (tokenGuardado) {
-                  log('Token encontrado. Verificando...', 'info');
-                  await charControl.writeValue(new TextEncoder().encode(tokenGuardado));
-                } else {
-                  // ¡AQUÍ ESTÁ EL CANDADO DE SEGURIDAD!
-                  // Si es un celular nuevo, le preguntamos el PIN al humano
-                  const pinIngresado = prompt("Dispositivo no registrado.\nIngrese el PIN Maestro de Seguridad:");
-                  
-                  if (pinIngresado && pinIngresado.trim() !== "") {
-                    log('Enviando PIN maestro...', 'info');
-                    await charControl.writeValue(new TextEncoder().encode(pinIngresado.trim()));
-                  } else {
-                    log('Registro cancelado por el usuario.', 'err');
-                    device.gatt.disconnect();
-                    autenticado = false;
-                    actualizarUI();
-                  }
-                }
+        if (tokenGuardado) {
+          log('Token encontrado. Verificando...', 'info');
+          await charControl.writeValue(new TextEncoder().encode(tokenGuardado));
+        } else {
+          // ¡AQUÍ ESTÁ EL CANDADO DE SEGURIDAD!
+          // Si es un celular nuevo, le preguntamos el PIN al humano
+          const pinIngresado = prompt("Dispositivo no registrado.\nIngrese el PIN Maestro de Seguridad:");
+          
+          if (pinIngresado && pinIngresado.trim() !== "") {
+            log('Enviando PIN maestro...', 'info');
+            await charControl.writeValue(new TextEncoder().encode(pinIngresado.trim()));
+          } else {
+            log('Registro cancelado por el usuario.', 'err');
+            device.gatt.disconnect();
+            autenticado = false;
+            actualizarUI();
+          }
+        }
+
+      // ¡ESTAS 4 LÍNEAS FALTABAN EN TU CÓDIGO!
+      } catch (err) {
+        log('Error: ' + err.message, 'err');
+        ring.className = 'status-ring';
+        icono.textContent = '🔒';
+        actualizarUI();
+      }
+    }
 
     // ─── Toggle ───────────────────────────────────────────────────────
     async function toggle() {
