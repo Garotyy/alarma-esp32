@@ -369,25 +369,21 @@
         return;
       }
       if (msg === 'AUTH:FAIL') {
-        localStorage.removeItem('alarma_token');
-        autenticado = false;
-        log('Token invalido. Reconectando en 3s...', 'err');
-        setTimeout(async () => {
-          try {
-            const server  = await device.gatt.connect();
-            const service = await server.getPrimaryService(SERVICE_UUID);
-            charControl   = await service.getCharacteristic(CHAR_CONTROL_UUID);
-            charNotify    = await service.getCharacteristic(CHAR_NOTIFY_UUID);
-            await charNotify.startNotifications();
-            charNotify.addEventListener('characteristicvaluechanged', manejarNotificacionBLE);
-            await charControl.writeValue(new TextEncoder().encode('0000'));
-            log('PIN maestro enviado. Esperando registro...', 'info');
-          } catch(e) {
-            log('Error al reconectar: ' + e.message, 'err');
-          }
-        }, 3000);
-        return;
-      }
+              localStorage.removeItem('alarma_token');
+              autenticado = false;
+              log('Token inválido. Reiniciando conexión...', 'err');
+              
+              // Desconectamos limpiamente desde el cliente antes de que el ESP32 nos eche
+              if(device && device.gatt.connected) {
+                  device.gatt.disconnect(); 
+              }
+
+              // Le pedimos al usuario que vuelva a conectar manualmente
+              // Es más seguro y confiable que intentar una reconexión forzada en segundo plano
+              actualizarUI();
+              log('Presiona Conectar de nuevo para registrar el dispositivo.', 'warn');
+              return;
+            }
 
       // ── Mensajes normales (solo si autenticado) ────────────────────────
       if (!autenticado) return;
