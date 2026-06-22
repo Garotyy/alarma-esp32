@@ -300,13 +300,16 @@
       }
     }
 
-    function enviarNotif(titulo, cuerpo) {
+    async function enviarNotif(titulo, cuerpo) {
       if (!notifActivas || Notification.permission !== 'granted') return;
-      if (navigator.serviceWorker.controller) {
-        // Vía Service Worker → funciona en segundo plano en Android
-        navigator.serviceWorker.controller.postMessage({ titulo, cuerpo });
-      } else {
-        // Fallback directo (solo funciona con la app en primer plano)
+      
+      try {
+        // Esperar a que el SW esté activo y controlando la página
+        const registration = await navigator.serviceWorker.ready;
+        registration.showNotification(titulo, { body: cuerpo, vibrate: [200, 100, 200] });
+      } catch (err) {
+        // Fallback si SW no disponible
+        console.log('[Notif] Fallback directo:', err);
         new Notification(titulo, { body: cuerpo });
       }
     }
@@ -350,7 +353,7 @@
     // ─── Mensajes BLE entrantes del ESP32 ────────────────────────────
     function manejarNotificacionBLE(event) {
       const msg = new TextDecoder().decode(event.target.value);
-
+      console.log('[BLE] Mensaje recibido:', msg);
       if (msg.startsWith('ESTADO:')) {
         armado = msg.replace('ESTADO:', '') === 'ARMADO';
         actualizarUI();
