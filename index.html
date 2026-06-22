@@ -259,7 +259,6 @@
         localStorage.removeItem('alarma_token');
         autenticado = false;
         log('Token o PIN rechazado.', 'err');
-        if(device && device.gatt.connected) device.gatt.disconnect(); 
         actualizarUI();
         return;
       }
