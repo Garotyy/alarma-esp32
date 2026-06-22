@@ -369,22 +369,23 @@
         return;
       }
       if (msg === 'AUTH:FAIL') {
-        localStorage.removeItem('alarma_token'); // borrar token inválido
+        localStorage.removeItem('alarma_token');
         autenticado = false;
-        log('Token inválido. Borrando y reconectando...', 'err');
-        // Intentar con PIN maestro como fallback
+        log('Token invalido. Reconectando en 3s...', 'err');
         setTimeout(async () => {
           try {
+            const server  = await device.gatt.connect();
+            const service = await server.getPrimaryService(SERVICE_UUID);
+            charControl   = await service.getCharacteristic(CHAR_CONTROL_UUID);
+            charNotify    = await service.getCharacteristic(CHAR_NOTIFY_UUID);
+            await charNotify.startNotifications();
+            charNotify.addEventListener('characteristicvaluechanged', manejarNotificacionBLE);
             await charControl.writeValue(new TextEncoder().encode('0000'));
             log('PIN maestro enviado. Esperando registro...', 'info');
           } catch(e) {
-            log('Error al reenviar PIN: ' + e.message, 'err');
+            log('Error al reconectar: ' + e.message, 'err');
           }
-        }, 500);
-        return;
-      }
-      if (msg === 'AUTH:FULL') {
-        log('Whitelist llena. Contacta al administrador.', 'err');
+        }, 3000);
         return;
       }
 
