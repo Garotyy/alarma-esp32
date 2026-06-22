@@ -235,6 +235,7 @@
     let armado      = true;
     let notifActivas = false;
     let deferredPrompt = null;
+    let autenticado = false; 
 
     // ─── DOM ──────────────────────────────────────────────────────────
     const ring          = document.getElementById('ring');
@@ -300,16 +301,13 @@
       }
     }
 
-    async function enviarNotif(titulo, cuerpo) {
+    function enviarNotif(titulo, cuerpo) {
       if (!notifActivas || Notification.permission !== 'granted') return;
-      
-      try {
-        // Esperar a que el SW esté activo y controlando la página
-        const registration = await navigator.serviceWorker.ready;
-        registration.showNotification(titulo, { body: cuerpo, vibrate: [200, 100, 200] });
-      } catch (err) {
-        // Fallback si SW no disponible
-        console.log('[Notif] Fallback directo:', err);
+      if (navigator.serviceWorker.controller) {
+        // Vía Service Worker → funciona en segundo plano en Android
+        navigator.serviceWorker.controller.postMessage({ titulo, cuerpo });
+      } else {
+        // Fallback directo (solo funciona con la app en primer plano)
         new Notification(titulo, { body: cuerpo });
       }
     }
@@ -331,7 +329,7 @@
 
       btnConectar.textContent = '⬡ Desconectar';
       btnConectar.className = 'btn btn-conectar conectado';
-      btnToggle.disabled = false;
+      btnToggle.disabled = !autenticado;
 
       if (armado) {
         ring.className = 'status-ring armado';
@@ -354,15 +352,54 @@
     function manejarNotificacionBLE(event) {
       const msg = new TextDecoder().decode(event.target.value);
       console.log('[BLE] Mensaje recibido:', msg);
+
+      // ── Autenticación ──────────────────────────────────────────────────
+      if (msg.startsWith('AUTH:TOKEN:')) {
+        const token = msg.replace('AUTH:TOKEN:', '');
+        localStorage.setItem('alarma_token', token);
+        autenticado = true;
+        log('Dispositivo registrado y autorizado.', 'ok');
+        actualizarUI();
+        return;
+      }
+      if (msg === 'AUTH:OK') {
+        autenticado = true;
+        log('Autenticado correctamente.', 'ok');
+        actualizarUI();
+        return;
+      }
+      if (msg === 'AUTH:FAIL') {
+        localStorage.removeItem('alarma_token'); // borrar token inválido
+        autenticado = false;
+        log('Token inválido. Borrando y reconectando...', 'err');
+        // Intentar con PIN maestro como fallback
+        setTimeout(async () => {
+          try {
+            await charControl.writeValue(new TextEncoder().encode('0000'));
+            log('PIN maestro enviado. Esperando registro...', 'info');
+          } catch(e) {
+            log('Error al reenviar PIN: ' + e.message, 'err');
+          }
+        }, 500);
+        return;
+      }
+      if (msg === 'AUTH:FULL') {
+        log('Whitelist llena. Contacta al administrador.', 'err');
+        return;
+      }
+
+      // ── Mensajes normales (solo si autenticado) ────────────────────────
+      if (!autenticado) return;
+
       if (msg.startsWith('ESTADO:')) {
         armado = msg.replace('ESTADO:', '') === 'ARMADO';
         actualizarUI();
         if (armado) {
           log('Sistema armado.', 'warn');
-          enviarNotif('🔴 Alarma Armada', 'El sistema fue armado.');
+          enviarNotif('Alarma Armada', 'El sistema fue armado.');
         } else {
           log('Sistema desarmado.', 'ok');
-          enviarNotif('🟢 Alarma Desarmada', 'El sistema fue desarmado.');
+          enviarNotif('Alarma Desarmada', 'El sistema fue desarmado.');
         }
       }
       else if (msg === 'ALERTA:PUERTA_ABIERTA') {
@@ -371,12 +408,12 @@
         estadoTexto.className = 'alerta';
         estadoTexto.textContent = '¡PUERTA ABIERTA!';
         log('¡ALERTA! Puerta abierta.', 'err');
-        enviarNotif('🚨 ¡ALERTA!', 'La puerta fue abierta con la alarma activa.');
+        enviarNotif('¡ALERTA!', 'La puerta fue abierta con la alarma activa.');
       }
       else if (msg === 'ALERTA:PUERTA_CERRADA') {
         actualizarUI();
         log('Puerta cerrada.', 'ok');
-        enviarNotif('✅ Puerta cerrada', 'La puerta volvió a cerrarse.');
+        enviarNotif('Puerta cerrada', 'La puerta volvio a cerrarse.');
       }
     }
 
@@ -385,6 +422,7 @@
       if (device && device.gatt.connected) {
         device.gatt.disconnect();
         log('Desconectado.');
+        autenticado = false;
         actualizarUI();
         return;
       }
@@ -408,6 +446,7 @@
           log('Conexión perdida.', 'err');
           charControl = null;
           charNotify  = null;
+          autenticado = false;
           actualizarUI();
         });
 
@@ -421,8 +460,17 @@
         await charNotify.startNotifications();
         charNotify.addEventListener('characteristicvaluechanged', manejarNotificacionBLE);
 
-        log('¡Conectado! Notificaciones BLE activas.', 'ok');
-        actualizarUI();
+        log('Conectado. Autenticando...', 'info');
+
+        // Intentar autenticar automáticamente con token guardado
+        const tokenGuardado = localStorage.getItem('alarma_token');
+        if (tokenGuardado) {
+          log('Token encontrado. Verificando...', 'info');
+          await charControl.writeValue(new TextEncoder().encode(tokenGuardado));
+        } else {
+          log('Sin token. Enviando PIN maestro...', 'info');
+          await charControl.writeValue(new TextEncoder().encode('0000'));
+        }
 
       } catch (err) {
         log('Error: ' + err.message, 'err');
